@@ -1,0 +1,27 @@
+# Environment
+.env
+.venv/
+env/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Datasets (too large for GitHub)
+dataset/
+database/*.db
+
+# RAG store (generated, can be rebuilt)
+rag/store/
+
+# Misc
+*.log

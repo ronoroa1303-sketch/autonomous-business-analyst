@@ -1,0 +1,144 @@
+{
+  "name": "Autonomous Business Analyst Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "analyst-agent",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook-1",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [220, 300]
+    },
+    {
+      "parameters": {
+        "url": "=http://host.docker.internal:8000/planner?query={{ encodeURIComponent($json.body.query) }}",
+        "options": {},
+        "method": "GET"
+      },
+      "id": "planner-1",
+      "name": "Planner Agent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "url": "=http://host.docker.internal:8000/data?query={{ encodeURIComponent($node['Webhook'].json.body.query) }}",
+        "options": {},
+        "method": "GET"
+      },
+      "id": "data-1",
+      "name": "Data Agent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [660, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $node['Planner Agent'].json.use_insight_agent }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "if-insight-1",
+      "name": "Needs Insight?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [880, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://host.docker.internal:8000/insight",
+        "method": "POST",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"query\": \"{{ $node['Webhook'].json.body.query }}\", \"rows\": {{ JSON.stringify($node['Data Agent'].json.rows) }} }"
+      },
+      "id": "insight-1",
+      "name": "Insight Agent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1100, 200]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "duplicateItem": false,
+        "assignments": {
+          "assignments": [
+            { "name": "status", "value": "success", "type": "string" },
+            { "name": "rows", "value": "={{ $node['Data Agent'].json.rows }}", "type": "json" },
+            { "name": "row_count", "value": "={{ $node['Data Agent'].json.row_count }}", "type": "number" },
+            { "name": "insight", "value": "={{ $node['Insight Agent'].json.insight }}", "type": "string" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "response-with-insight",
+      "name": "Response with Insight",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [1320, 200]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "duplicateItem": false,
+        "assignments": {
+          "assignments": [
+            { "name": "status", "value": "success", "type": "string" },
+            { "name": "rows", "value": "={{ $node['Data Agent'].json.rows }}", "type": "string" },
+            { "name": "row_count", "value": "={{ $node['Data Agent'].json.row_count }}", "type": "number" },
+            { "name": "insight", "value": "", "type": "string" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "response-data-only",
+      "name": "Response Data Only",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [1320, 400]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [{ "node": "Planner Agent", "type": "main", "index": 0 }]
+      ]
+    },
+    "Planner Agent": {
+      "main": [
+        [{ "node": "Data Agent", "type": "main", "index": 0 }]
+      ]
+    },
+    "Data Agent": {
+      "main": [
+        [{ "node": "Needs Insight?", "type": "main", "index": 0 }]
+      ]
+    },
+    "Needs Insight?": {
+      "main": [
+        [{ "node": "Insight Agent", "type": "main", "index": 0 }],
+        [{ "node": "Response Data Only", "type": "main", "index": 0 }]
+      ]
+    },
+    "Insight Agent": {
+      "main": [
+        [{ "node": "Response with Insight", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
